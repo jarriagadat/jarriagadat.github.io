@@ -1,1 +1,394 @@
-hello, world 👋
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>_/ /. /. /'</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #39ff14;
+      --green-dim: #1e8c0a;
+      --green-muted: #0d4d04;
+      --bg: #060a05;
+      --amber: #ffb300;
+      --red: #ff3c3c;
+      --cyan: #00e5ff;
+      --white: #c8f5c0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--green);
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 2rem;
+      overflow-x: hidden;
+      cursor: default;
+    }
+
+    /* scanline overlay */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* CRT vignette */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.7) 100%);
+      pointer-events: none;
+      z-index: 101;
+    }
+
+    .terminal {
+      max-width: 800px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    /* ── ASCII banner ── */
+    .ascii-banner {
+      color: var(--green);
+      font-size: clamp(6px, 1.5vw, 13px);
+      line-height: 1.2;
+      white-space: pre;
+      margin-bottom: 1.5rem;
+      opacity: 0;
+      animation: fadeIn 0.5s ease 0.2s forwards;
+      text-shadow: 0 0 8px var(--green);
+    }
+
+    /* ── Boot lines ── */
+    .boot {
+      color: var(--green-dim);
+      font-size: 12px;
+      margin-bottom: 2rem;
+    }
+
+    .boot-line {
+      display: block;
+      opacity: 0;
+      animation: slideIn 0.3s ease forwards;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .ok    { color: var(--green); font-weight: 700; }
+    .warn  { color: var(--amber); }
+    .info  { color: var(--cyan); }
+
+    /* ── Sections ── */
+    .section {
+      margin-bottom: 1.8rem;
+      opacity: 0;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    .prompt {
+      color: var(--green-dim);
+      user-select: none;
+    }
+
+    .prompt::before { content: '$ '; color: var(--amber); }
+
+    .section-title {
+      color: var(--amber);
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+      text-shadow: 0 0 6px var(--amber);
+    }
+
+    .section-title::before { content: '# '; }
+
+    .entry {
+      padding-left: 1.2rem;
+      color: var(--white);
+      margin-bottom: 0.15rem;
+    }
+
+    .entry::before {
+      content: '→ ';
+      color: var(--green-dim);
+    }
+
+    .label {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    /* ── Links ── */
+    a {
+      color: var(--cyan);
+      text-decoration: none;
+      transition: color 0.15s, text-shadow 0.15s;
+    }
+
+    a:hover {
+      color: #fff;
+      text-shadow: 0 0 8px var(--cyan);
+    }
+
+    /* ── Seismometer ── */
+    .seismo {
+      margin: 2rem 0;
+      border: 1px solid var(--green-muted);
+      padding: 0.8rem 1rem;
+      position: relative;
+      opacity: 0;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    .seismo-label {
+      position: absolute;
+      top: -0.6rem;
+      left: 1rem;
+      background: var(--bg);
+      padding: 0 0.4rem;
+      font-size: 11px;
+      color: var(--green-dim);
+    }
+
+    .waveform {
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--red);
+      white-space: pre;
+      letter-spacing: 1px;
+      text-shadow: 0 0 4px var(--red);
+      overflow: hidden;
+    }
+
+    .seismo-meta {
+      font-size: 11px;
+      color: var(--green-dim);
+      margin-top: 0.4rem;
+    }
+
+    /* ── Quote ── */
+    .quote-block {
+      border-left: 2px solid var(--green-muted);
+      padding-left: 1rem;
+      color: var(--green-dim);
+      font-style: italic;
+      margin: 1.5rem 0;
+      opacity: 0;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    .quote-block .author {
+      color: var(--amber);
+      font-style: normal;
+      font-size: 12px;
+      margin-top: 0.3rem;
+    }
+
+    /* ── Cursor ── */
+    .cursor {
+      display: inline-block;
+      width: 9px;
+      height: 1.1em;
+      background: var(--green);
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 3rem;
+      font-size: 11px;
+      color: var(--green-muted);
+      border-top: 1px solid var(--green-muted);
+      padding-top: 0.8rem;
+      opacity: 0;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeIn   { to { opacity: 1; } }
+    @keyframes blink    { 50% { opacity: 0; } }
+    @keyframes slideIn  { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+    @keyframes waveScroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    .wave-inner {
+      display: inline-block;
+      animation: waveScroll 6s linear infinite;
+      white-space: pre;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      body { padding: 1rem; font-size: 12px; }
+      .ascii-banner { font-size: 5px; }
+    }
+  </style>
+</head>
+<body>
+<div class="terminal">
+
+  <!-- ASCII banner -->
+<pre class="ascii-banner" style="font-size: clamp(28px, 6vw, 64px); letter-spacing: 0.15em; line-height: 1.1;">
+_/  /.  /.  /'
+</pre>
+
+  <!-- Boot sequence -->
+  <div class="boot" id="boot"></div>
+
+  <!-- Main content (hidden until boot finishes) -->
+  <div id="content" style="display:none">
+
+    <!-- Whoami -->
+    <div class="section" style="animation-delay:0.1s">
+      <div class="prompt">whoami</div>
+      <div style="margin-top:0.5rem; color:var(--white)">
+        Jorge A. Arriagada Triana &mdash; <span style="color:var(--green)">Geotechnical Engineer</span><br>
+        PhD Candidate · Extreme Events · UV<br>
+        Head of Laboratories · EIC, Universidad de Valparaíso<br>
+        <span style="color:var(--green-dim)">// everything underground</span>
+      </div>
+    </div>
+
+    <!-- Stack -->
+    <div class="section" style="animation-delay:0.2s">
+      <div class="section-title">stack</div>
+      <div class="entry"><span class="label">numerical:</span> FEM · Rocscience Suite · OPTUM · Abaqus</div>
+      <div class="entry"><span class="label">code:</span> Julia · Python · HTML/CSS</div>
+      <div class="entry"><span class="label">domain:</span> Soil Mechanics · Rock Mechanics · Seismic Geotechnics</div>
+      <div class="entry"><span class="label">tools:</span> Obsidian · VSCode · espanso</div>
+    </div>
+
+    <!-- Seismometer -->
+    <div class="seismo" style="animation-delay:0.3s">
+      <span class="seismo-label">LIVE · Raspberry Shake 4D · R70F6 · EHZ</span>
+      <div class="waveform" id="wave-container" style="overflow:hidden; max-width:100%">
+        <span class="wave-inner" id="waveform"></span>
+      </div>
+      <div class="seismo-meta">
+        Valparaíso, Chile &nbsp;|&nbsp;
+        <a href="https://dataview.raspberryshake.org/#/AM/R70F6/00/EHZ?streaming=on" target="_blank">open stream ↗</a>
+      </div>
+    </div>
+
+    <!-- Links -->
+    <div class="section" style="animation-delay:0.4s">
+      <div class="section-title">links</div>
+      <div class="entry"><a href="https://github.com/jarriagadat" target="_blank">github.com/jarriagadat</a></div>
+      <div class="entry"><a href="https://orcid.org/0000-0002-2742-7421" target="_blank">orcid · 0000-0002-2742-7421</a></div>
+      <div class="entry"><a href="https://www.researchgate.net/profile/Jorge-Arriagada-Triana" target="_blank">researchgate</a></div>
+      <div class="entry"><a href="https://scholar.google.com/citations?hl=es&user=lzoXLpMAAAAJ" target="_blank">google scholar</a></div>
+      <div class="entry"><a href="https://www.linkedin.com/in/jorgearriagadat/" target="_blank">linkedin</a></div>
+      <div class="entry"><a href="https://ggmosuv.github.io/" target="_blank">GGMOS · geomechanics group UV</a></div>
+    </div>
+
+    <!-- Quote -->
+    <div class="quote-block" style="animation-delay:0.5s">
+      "Study hard what interests you the most in the most undisciplined, irreverent and original manner possible."
+      <div class="author">— R. Feynman</div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer" style="animation-delay:0.6s">
+      <span style="color:var(--green-dim)">jarriagadat.github.io</span>
+      &nbsp;·&nbsp; Valparaíso, Chile
+      &nbsp;·&nbsp; <span id="utc-time"></span>
+      <span class="cursor"></span>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /terminal -->
+
+<script>
+  // ── Boot sequence ──────────────────────────────────────────────
+  const bootLines = [
+    { text: '[    0.000] BIOS v2.4.1 — geokernel loading...', cls: '' },
+    { text: '[    0.312] Initializing soil mechanics module... ', cls: '', ok: true },
+    { text: '[    0.487] Mounting seismometer /dev/shake0 (R70F6)... ', cls: '', ok: true },
+    { text: '[    0.651] Loading Rocscience Suite drivers... ', cls: '', ok: true },
+    { text: '[    0.802] FEM solver: ready', cls: 'ok' },
+    { text: '[    0.903] Julia runtime: active', cls: 'ok' },
+    { text: '[    1.102] WARNING: slope stability uncertain — run analysis', cls: 'warn' },
+    { text: '[    1.204] PhD mode: ENGAGED', cls: 'info' },
+    { text: '[    1.400] System ready. Welcome, engineer.', cls: 'ok' },
+  ];
+
+  const bootEl = document.getElementById('boot');
+  const contentEl = document.getElementById('content');
+
+  let delay = 80;
+  bootLines.forEach((line, i) => {
+    setTimeout(() => {
+      const span = document.createElement('span');
+      span.className = 'boot-line ' + (line.cls || '');
+      span.style.animationDelay = '0s';
+      let txt = line.text;
+      if (line.ok) {
+        txt += '<span class="ok">[ OK ]</span>';
+      }
+      span.innerHTML = txt;
+      bootEl.appendChild(span);
+      if (i === bootLines.length - 1) {
+        setTimeout(() => {
+          bootEl.style.opacity = '0';
+          bootEl.style.transition = 'opacity 0.5s';
+          setTimeout(() => {
+            bootEl.style.display = 'none';
+            contentEl.style.display = 'block';
+            initContent();
+          }, 500);
+        }, 600);
+      }
+    }, delay);
+    delay += i < 3 ? 120 : i < 6 ? 180 : 250;
+  });
+
+  // ── Waveform animation ─────────────────────────────────────────
+  function generateWave() {
+    const chars = '▁▂▃▄▅▆▇█▇▆▅▄▃▂▁▂▁▁▂▃▁▂▄▃▂▁▁▂▁▁▁▂▃▅▆▅▃▂▁▁▁▂▁▂▃▂▁';
+    let s = '';
+    for (let i = 0; i < 120; i++) {
+      s += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return s + s; // doubled for seamless scroll
+  }
+
+  function initContent() {
+    const waveEl = document.getElementById('waveform');
+    waveEl.textContent = generateWave();
+    // refresh wave occasionally
+    setInterval(() => {
+      waveEl.textContent = generateWave();
+    }, 6000);
+
+    // UTC time
+    const timeEl = document.getElementById('utc-time');
+    function updateTime() {
+      const now = new Date();
+      const hh = String(now.getUTCHours()).padStart(2,'0');
+      const mm = String(now.getUTCMinutes()).padStart(2,'0');
+      const ss = String(now.getUTCSeconds()).padStart(2,'0');
+      timeEl.textContent = `UTC ${hh}:${mm}:${ss}`;
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+  }
+</script>
+</body>
+</html>
