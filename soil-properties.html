@@ -243,7 +243,7 @@ header {
   </div>
 </header>
 
-<p class="hint">Hover any marker or soil name to highlight &nbsp;·&nbsp; <b>Click to pin</b> a soil type &nbsp;·&nbsp; shaded bars indicate min–max ranges</p>
+<p class="hint">Hover to see details &nbsp;·&nbsp; <b>Click to select multiple soils</b> &nbsp;·&nbsp; Click background to clear &nbsp;·&nbsp; shaded bars are min–max ranges</p>
   
 <div class="main">
   <div id="strips-area" class="strips-area"></div>
@@ -478,22 +478,35 @@ SOILS.forEach((s, i) => {
   legEl.appendChild(item);
 });
 
-/* ─── State & Highlight ─── */
-let curHL = null;
-let pinnedIdx = null; // NEW: tracks the clicked/pinned state
+/* ─── State & Highlight (Multi-Select) ─── */
+let curHL = null; 
+let selectedSoils = new Set(); // NEW: A Set to hold multiple clicked soils
 
-function setHL(idx) {
-  if (curHL === idx) return;
-  curHL = idx;
+function updateHighlight() {
+  const hasSelection = selectedSoils.size > 0;
+  const hasHover = curHL !== null;
+  const isAnythingActive = hasSelection || hasHover;
+
   document.querySelectorAll('.strip-svg [data-i]').forEach(el => {
     const i = parseInt(el.dataset.i);
-    const on = idx === null || i === idx;
-    el.style.opacity = on ? '' : '0.08';
-    if (el.tagName === 'circle')
-      el.setAttribute('r', i === idx ? DOT_R + 2.5 : DOT_R);
+    const isHovered = (i === curHL);
+    const isSelected = selectedSoils.has(i);
+    
+    // If anything is clicked or hovered, dim the rest. Otherwise, show all.
+    const isVisible = isAnythingActive ? (isHovered || isSelected) : true;
+    
+    // Only enlarge the circle if it is specifically hovered or clicked
+    const isEmphasized = isHovered || isSelected; 
+    
+    el.style.opacity = isVisible ? '' : '0.08';
+    if (el.tagName === 'circle') {
+      el.setAttribute('r', isEmphasized ? DOT_R + 2.5 : DOT_R);
+    }
   });
+
   document.querySelectorAll('.leg-item').forEach(el => {
-    el.classList.toggle('active', parseInt(el.dataset.i) === idx);
+    const i = parseInt(el.dataset.i);
+    el.classList.toggle('active', selectedSoils.has(i) || i === curHL);
   });
 }
 
@@ -527,56 +540,47 @@ function showTT(i, e) {
 function moveTT(e) { if (tt.style.opacity === '1') posTT(e); }
 function hideTT()  { tt.style.opacity = '0'; }
 
-/* ─── Unified Event Listeners (Hover & Click) ─── */
+/* ─── Unified Event Listeners (Hover & Multi-Click) ─── */
 
-// 1. Handle Clicks (Pinning)
+// 1. Handle Clicks (Multi-Select toggle)
 document.addEventListener('click', e => {
   const targetEl = e.target.closest('.strip-svg [data-i], .leg-item');
   
   if (targetEl) {
     const i = parseInt(targetEl.dataset.i);
-    if (pinnedIdx === i) {
-      // If already pinned, click again to unpin
-      pinnedIdx = null; 
+    // If it's already selected, remove it. If not, add it.
+    if (selectedSoils.has(i)) {
+      selectedSoils.delete(i);
     } else {
-      // Pin the new item and freeze the tooltip where they clicked
-      pinnedIdx = i;    
-      setHL(i);
-      showTT(i, e);
+      selectedSoils.add(i);
     }
+    updateHighlight();
   } else {
-    // Clicked outside the charts/legend: unpin everything
-    if (pinnedIdx !== null) {
-      pinnedIdx = null;
-      setHL(null);
-      hideTT();
-    }
+    // Clicked in the empty background: clear all selections
+    selectedSoils.clear();
+    updateHighlight();
   }
 });
 
-// 2. Handle Hovers
+// 2. Handle Hovers (Tooltip follows mouse)
 document.addEventListener('mousemove', e => {
-  // If an item is pinned, ignore all mouse movements (keeps tooltip frozen)
-  if (pinnedIdx !== null) return; 
-
-  // Check if we are hovering over a chart dot OR a legend item
   const el = e.target.closest ? e.target.closest('.strip-svg [data-i], .leg-item') : null;
   
   if (el) {
     const i = parseInt(el.dataset.i);
-    
-    // Only rebuild the tooltip if we just entered a new item
     if (curHL !== i) {
-       setHL(i);
+       curHL = i;
+       updateHighlight();
        showTT(i, e);
     } else {
-       // Otherwise, just move it with the mouse
        moveTT(e);
     }
   } else {
-    // Not hovering anything relevant, clear it
-    setHL(null);
-    hideTT();
+    if (curHL !== null) {
+      curHL = null;
+      updateHighlight();
+      hideTT();
+    }
   }
 });
 </script>
