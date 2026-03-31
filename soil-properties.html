@@ -144,13 +144,16 @@ header {
 
 .strip-svg { display: block; width: 100%; overflow: visible; }
 
-/* ─── Legend ─── */
+/* ─── Legend & Sidebar ─── */
 .legend-col {
-  width: 196px;
+  width: 220px;
   flex-shrink: 0;
   position: sticky;
   top: 28px;
   align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 .legend-card {
   background: var(--surface);
@@ -167,7 +170,15 @@ header {
   margin-bottom: 10px;
   padding-bottom: 9px;
   border-bottom: .5px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
 }
+.clear-btn {
+  background: none; border: none; color: var(--ink2); cursor: pointer;
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+}
+.clear-btn:hover { color: var(--ink); text-decoration: underline; }
+
 .leg-item {
   display: flex;
   align-items: center;
@@ -177,20 +188,55 @@ header {
   cursor: pointer;
   padding: 4px 6px;
   border-radius: 6px;
-  transition: background .1s, color .1s, transform .1s;
+  transition: background .1s, color .1s;
   line-height: 1.35;
   margin: 1px 0;
 }
-.leg-item:hover { background: var(--bg); color: var(--ink); transform: translateX(2px); }
+.leg-item:hover { background: var(--bg); color: var(--ink); }
 .leg-item.active { background: var(--bg); color: var(--ink); font-weight: 500; }
-.leg-dot {
-  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 500; color: #fff;
-  font-family: var(--mono);
-  transition: transform .12s;
+.leg-item input[type="checkbox"] {
+  pointer-events: none;
+  accent-color: var(--ink);
 }
-.leg-item:hover .leg-dot, .leg-item.active .leg-dot { transform: scale(1.18); }
+.leg-dot {
+  width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 500; color: #fff;
+  font-family: var(--mono);
+}
+
+/* ─── Custom Form ─── */
+.custom-form {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 4px;
+}
+.custom-form input {
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink);
+  width: 100%;
+}
+.custom-form input:focus { outline: none; border-color: var(--ink3); }
+.custom-form button {
+  font-family: var(--font);
+  font-size: 11.5px;
+  font-weight: 500;
+  background: var(--ink);
+  color: var(--surface);
+  border: none;
+  border-radius: 6px;
+  padding: 8px;
+  margin-top: 4px;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.custom-form button:hover { opacity: 0.85; }
 
 /* ─── Tooltip ─── */
 #tt {
@@ -223,11 +269,6 @@ header {
 }
 .tt-k { color: rgba(240,237,230,.5); font-size: 11px; align-self: center; }
 .tt-v { font-family: var(--mono); font-size: 11px; color: #f0ede6; text-align: right; }
-.tt-sep {
-  grid-column: 1/-1;
-  border-top: .5px solid rgba(255,255,255,.07);
-  margin: 5px 0 4px;
-}
 </style>
 </head>
 <body>
@@ -235,7 +276,7 @@ header {
 <header>
   <div class="hdr-left">
     <h1>Soil Properties Dashboard</h1>
-    <p>Typical values in natural state &nbsp;·&nbsp; 9 soil types &nbsp;·&nbsp; 6 geotechnical properties</p>
+    <p>Typical values in natural state &nbsp;·&nbsp; Geotechnical properties</p>
   </div>
   <div class="hdr-right">
     Table 3.2 &amp; derived values<br>
@@ -243,14 +284,32 @@ header {
   </div>
 </header>
 
-<p class="hint">Hover to see details &nbsp;·&nbsp; <b>Click to select multiple soils</b> &nbsp;·&nbsp; Click background to clear &nbsp;·&nbsp; shaded bars are min–max ranges</p>
+<p class="hint">Hover to see details &nbsp;·&nbsp; <b>Check boxes to select multiple soils</b> &nbsp;·&nbsp; Shaded bars are min–max ranges</p>
   
 <div class="main">
   <div id="strips-area" class="strips-area"></div>
+  
   <aside class="legend-col">
     <div class="legend-card">
-      <div class="legend-title">Soil type</div>
+      <div class="legend-title">
+        <span>Select Soils</span>
+        <button class="clear-btn" id="clear-btn">Clear</button>
+      </div>
       <div id="legend"></div>
+    </div>
+    
+    <div class="legend-card">
+      <div class="legend-title">Add Custom Soil</div>
+      <div class="custom-form">
+        <input type="text" id="cs-name" placeholder="Name (e.g., My Clay)">
+        <input type="number" id="cs-e" placeholder="Void ratio (e)" step="0.01">
+        <input type="number" id="cs-w" placeholder="Moisture w (%)" step="1">
+        <input type="number" id="cs-gd" placeholder="Dry unit wt (γd)" step="0.1">
+        <input type="number" id="cs-Gs" placeholder="Spec. gravity (Gs)" step="0.01">
+        <input type="number" id="cs-por" placeholder="Porosity (n)" step="0.01">
+        <input type="number" id="cs-gsat" placeholder="Sat. unit wt (γsat)" step="0.1">
+        <button id="add-soil-btn">Add to Chart</button>
+      </div>
     </div>
   </aside>
 </div>
@@ -275,6 +334,8 @@ const COLORS = [
   '#888780','#1D9E75','#639922','#BA7517',
   '#D85A30','#E24B4A','#7F77DD','#D4537E','#444442'
 ];
+
+const CUSTOM_COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
 
 const PROPS = [
   {
@@ -321,8 +382,13 @@ const PROPS = [
   },
 ];
 
+/* ─── State & Selections ─── */
+let curHL = null; 
+let selectedSoils = new Set(); 
+
 /* ─── Helpers ─── */
 function fmtArr(arr, dec, unit) {
+  if (!arr || arr.length === 0) return '—';
   const f = v => dec > 0 ? Number(v).toFixed(dec) : String(v);
   const s = arr.length === 2 ? `${f(arr[0])} – ${f(arr[1])}` : f(arr[0]);
   return unit ? `${s} ${unit}` : s;
@@ -336,7 +402,7 @@ function mk(tag, attrs, extra) {
   return el;
 }
 
-/* ─── Strip constants ─── */
+/* ─── Strip constants & Logic ─── */
 const VW = 320, AL = 4, AR = 316, AW = 312;
 const DOT_R = 6, AY_BASE = 46, TICK_FONT = 8.5, LBL_FONT = 10;
 const MIN_GAP = 9, LVL_H = 15;
@@ -358,14 +424,17 @@ function stackLevels(items) {
 }
 
 function buildSVG(p) {
-  const items = SOILS.map((s, i) => {
+  const items = [];
+  SOILS.forEach((s, i) => {
     const v = s[p.key];
+    if (!v || v.length === 0) return; // Skip if custom soil is missing this prop
     const cx = v.length === 2 ? (sx(v[0],p) + sx(v[1],p)) / 2 : sx(v[0],p);
-    return { i, c: COLORS[i], v, cx, lv: 0 };
+    items.push({ i, c: COLORS[i], v, cx, lv: 0 });
   });
+  
   stackLevels(items);
 
-  const maxLv = Math.max(...items.map(x => x.lv));
+  const maxLv = items.length > 0 ? Math.max(...items.map(x => x.lv)) : 0;
   const topPad = 8 + (maxLv + 1) * LVL_H;
   const AY = AY_BASE;
   const H = topPad + AY + 22;
@@ -373,25 +442,13 @@ function buildSVG(p) {
   const svg = mk('svg', { viewBox:`0 0 ${VW} ${H}`, class:'strip-svg' });
 
   /* axis */
-  svg.appendChild(mk('line', {
-    x1:AL, x2:AR, y1:topPad+AY, y2:topPad+AY,
-    stroke:'#d0cec8', 'stroke-width':'1.5'
-  }));
+  svg.appendChild(mk('line', { x1:AL, x2:AR, y1:topPad+AY, y2:topPad+AY, stroke:'#d0cec8', 'stroke-width':'1.5' }));
 
   /* ticks & labels */
   p.ticks.forEach(t => {
     const x = sx(t, p);
-    svg.appendChild(mk('line', {
-      x1:x, x2:x, y1:topPad+AY-3, y2:topPad+AY+3,
-      stroke:'#d0cec8', 'stroke-width':'1'
-    }));
-    const lbl = mk('text', {
-      x, y:topPad+AY+15,
-      'text-anchor':'middle',
-      'font-size': TICK_FONT,
-      'fill':'#9c9a95',
-      'font-family':"'DM Mono', monospace"
-    });
+    svg.appendChild(mk('line', { x1:x, x2:x, y1:topPad+AY-3, y2:topPad+AY+3, stroke:'#d0cec8', 'stroke-width':'1' }));
+    const lbl = mk('text', { x, y:topPad+AY+15, 'text-anchor':'middle', 'font-size': TICK_FONT, 'fill':'#9c9a95', 'font-family':"'DM Mono', monospace" });
     lbl.textContent = p.fmt(t) + (p.unit ? '\u202F' + p.unit : '');
     svg.appendChild(lbl);
   });
@@ -400,10 +457,7 @@ function buildSVG(p) {
   items.forEach(({ i, c, v }) => {
     if (v.length !== 2) return;
     const x1 = sx(v[0],p), x2 = sx(v[1],p);
-    const bar = mk('rect', {
-      x:x1, y:topPad+AY-5, width:x2-x1, height:10,
-      rx:5, fill:c, opacity:'.18'
-    });
+    const bar = mk('rect', { x:x1, y:topPad+AY-5, width:x2-x1, height:10, rx:5, fill:c, opacity:'.18' });
     bar.dataset.i = i;
     svg.appendChild(bar);
   });
@@ -421,19 +475,11 @@ function buildSVG(p) {
   /* leader lines + number labels */
   items.forEach(({ i, c, cx, lv }) => {
     const ly = topPad - 6 - lv * LVL_H;
-    const leader = mk('line', {
-      x1:cx, x2:cx, y1:ly+5, y2:topPad+AY-DOT_R-2,
-      stroke:c, 'stroke-width':'.65', opacity:'.45', 'stroke-dasharray':'2 2'
-    });
+    const leader = mk('line', { x1:cx, x2:cx, y1:ly+5, y2:topPad+AY-DOT_R-2, stroke:c, 'stroke-width':'.65', opacity:'.45', 'stroke-dasharray':'2 2' });
     leader.dataset.i = i;
     svg.appendChild(leader);
 
-    const num = mk('text', {
-      x:cx, y:ly,
-      'text-anchor':'middle', 'dominant-baseline':'central',
-      'font-size': LBL_FONT, 'font-weight':'500',
-      fill:c, 'font-family':"'DM Mono', monospace"
-    });
+    const num = mk('text', { x:cx, y:ly, 'text-anchor':'middle', 'dominant-baseline':'central', 'font-size': LBL_FONT, 'font-weight':'500', fill:c, 'font-family':"'DM Mono', monospace" });
     num.style.cssText = 'cursor:pointer;transition:opacity .15s';
     num.dataset.i = i;
     num.textContent = i + 1;
@@ -443,45 +489,55 @@ function buildSVG(p) {
   return svg;
 }
 
-/* ─── Render strips ─── */
+/* ─── Render Engine ─── */
 const stripsArea = document.getElementById('strips-area');
+const legEl = document.getElementById('legend');
 const ROW_LABELS = ['From Table 3.2', 'Derived — standard geotechnical relationships'];
 
-PROPS.forEach((p, idx) => {
-  if (idx === 0 || idx === 3) {
-    const rl = document.createElement('div');
-    rl.className = 'row-label';
-    rl.textContent = ROW_LABELS[idx === 0 ? 0 : 1];
-    stripsArea.appendChild(rl);
-  }
+function renderDashboard() {
+  // Clear existing
+  stripsArea.innerHTML = '';
+  legEl.innerHTML = '';
 
-  const card = document.createElement('div');
-  card.className = 'strip-card';
-  card.innerHTML = `
-    <div class="prop-header">
-      <span class="prop-name">${p.nameHtml}</span>
-      ${p.unit ? `<span class="prop-unit">${p.unit}</span>` : ''}
-    </div>
-    <div class="prop-sym">${p.symHtml}</div>
-  `;
-  card.appendChild(buildSVG(p));
-  stripsArea.appendChild(card);
-});
+  // Render Strips
+  PROPS.forEach((p, idx) => {
+    if (idx === 0 || idx === 3) {
+      const rl = document.createElement('div');
+      rl.className = 'row-label';
+      rl.textContent = ROW_LABELS[idx === 0 ? 0 : 1];
+      stripsArea.appendChild(rl);
+    }
+    const card = document.createElement('div');
+    card.className = 'strip-card';
+    card.innerHTML = `
+      <div class="prop-header">
+        <span class="prop-name">${p.nameHtml}</span>
+        ${p.unit ? `<span class="prop-unit">${p.unit}</span>` : ''}
+      </div>
+      <div class="prop-sym">${p.symHtml}</div>
+    `;
+    card.appendChild(buildSVG(p));
+    stripsArea.appendChild(card);
+  });
 
-/* ─── Render legend ─── */
-const legEl = document.getElementById('legend');
-SOILS.forEach((s, i) => {
-  const item = document.createElement('div');
-  item.className = 'leg-item';
-  item.dataset.i = i;
-  item.innerHTML = `<span class="leg-dot" style="background:${COLORS[i]}">${i+1}</span><span>${s.name}</span>`;
-  legEl.appendChild(item);
-});
+  // Render Legend (Now with Checkboxes)
+  SOILS.forEach((s, i) => {
+    const item = document.createElement('div');
+    item.className = 'leg-item';
+    item.dataset.i = i;
+    const isChecked = selectedSoils.has(i) ? 'checked' : '';
+    item.innerHTML = `
+      <input type="checkbox" ${isChecked}>
+      <span class="leg-dot" style="background:${COLORS[i]}">${i+1}</span>
+      <span>${s.name}</span>
+    `;
+    legEl.appendChild(item);
+  });
 
-/* ─── State & Highlight (Multi-Select) ─── */
-let curHL = null; 
-let selectedSoils = new Set(); // NEW: A Set to hold multiple clicked soils
+  updateHighlight();
+}
 
+/* ─── Visual Updates ─── */
 function updateHighlight() {
   const hasSelection = selectedSoils.size > 0;
   const hasHover = curHL !== null;
@@ -491,11 +547,7 @@ function updateHighlight() {
     const i = parseInt(el.dataset.i);
     const isHovered = (i === curHL);
     const isSelected = selectedSoils.has(i);
-    
-    // If anything is clicked or hovered, dim the rest. Otherwise, show all.
     const isVisible = isAnythingActive ? (isHovered || isSelected) : true;
-    
-    // Only enlarge the circle if it is specifically hovered or clicked
     const isEmphasized = isHovered || isSelected; 
     
     el.style.opacity = isVisible ? '' : '0.08';
@@ -506,7 +558,9 @@ function updateHighlight() {
 
   document.querySelectorAll('.leg-item').forEach(el => {
     const i = parseInt(el.dataset.i);
-    el.classList.toggle('active', selectedSoils.has(i) || i === curHL);
+    const isSelected = selectedSoils.has(i);
+    el.classList.toggle('active', isSelected || i === curHL);
+    el.querySelector('input').checked = isSelected;
   });
 }
 
@@ -532,57 +586,84 @@ function posTT(e) {
   tt.style.top  = y + 'px';
 }
 
-function showTT(i, e) {
-  buildTT(i);
-  tt.style.opacity = '1';
-  posTT(e);
-}
+function showTT(i, e) { buildTT(i); tt.style.opacity = '1'; posTT(e); }
 function moveTT(e) { if (tt.style.opacity === '1') posTT(e); }
 function hideTT()  { tt.style.opacity = '0'; }
 
-/* ─── Unified Event Listeners (Hover & Multi-Click) ─── */
+/* ─── Interactions ─── */
 
-// 1. Handle Clicks (Multi-Select toggle)
+// Handle Clicks (Checkboxes / Multi-Select)
 document.addEventListener('click', e => {
   const targetEl = e.target.closest('.strip-svg [data-i], .leg-item');
   
   if (targetEl) {
     const i = parseInt(targetEl.dataset.i);
-    // If it's already selected, remove it. If not, add it.
-    if (selectedSoils.has(i)) {
-      selectedSoils.delete(i);
-    } else {
-      selectedSoils.add(i);
-    }
-    updateHighlight();
-  } else {
-    // Clicked in the empty background: clear all selections
-    selectedSoils.clear();
+    if (selectedSoils.has(i)) selectedSoils.delete(i);
+    else selectedSoils.add(i);
     updateHighlight();
   }
 });
 
-// 2. Handle Hovers (Tooltip follows mouse)
+// Clear Button
+document.getElementById('clear-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  selectedSoils.clear();
+  updateHighlight();
+});
+
+// Handle Hovers
 document.addEventListener('mousemove', e => {
   const el = e.target.closest ? e.target.closest('.strip-svg [data-i], .leg-item') : null;
-  
   if (el) {
     const i = parseInt(el.dataset.i);
-    if (curHL !== i) {
-       curHL = i;
-       updateHighlight();
-       showTT(i, e);
-    } else {
-       moveTT(e);
-    }
+    if (curHL !== i) { curHL = i; updateHighlight(); showTT(i, e); } 
+    else { moveTT(e); }
   } else {
-    if (curHL !== null) {
-      curHL = null;
-      updateHighlight();
-      hideTT();
-    }
+    if (curHL !== null) { curHL = null; updateHighlight(); hideTT(); }
   }
 });
+
+/* ─── Add Custom Soil Logic ─── */
+document.getElementById('add-soil-btn').addEventListener('click', () => {
+  const nameInput = document.getElementById('cs-name').value.trim();
+  const name = nameInput || `Custom Soil ${SOILS.length - 8}`; // default name if empty
+  
+  // Helper to grab number and format as array, or return empty array if blank
+  const getVal = (id) => {
+    const val = parseFloat(document.getElementById(id).value);
+    return isNaN(val) ? [] : [val];
+  };
+
+  const customSoil = {
+    name: name,
+    e: getVal('cs-e'),
+    w: getVal('cs-w'),
+    gd: getVal('cs-gd'),
+    Gs: getVal('cs-Gs'),
+    por: getVal('cs-por'),
+    gsat: getVal('cs-gsat')
+  };
+
+  // Push to data array
+  SOILS.push(customSoil);
+  
+  // Assign a color from our custom palette
+  const nextColor = CUSTOM_COLORS[(SOILS.length - 10) % CUSTOM_COLORS.length];
+  COLORS.push(nextColor);
+
+  // Automatically select the new soil so the user sees it immediately
+  selectedSoils.add(SOILS.length - 1);
+
+  // Re-render everything
+  renderDashboard();
+
+  // Clear the inputs
+  document.querySelectorAll('.custom-form input').forEach(input => input.value = '');
+});
+
+// Initial Render
+renderDashboard();
+
 </script>
 </body>
 </html>
