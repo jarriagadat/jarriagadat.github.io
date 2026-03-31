@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soil Properties Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #f5f3ee;
+  --surface: #ffffff;
+  --ink:     #1c1c1a;
+  --ink2:    #5c5b56;
+  --ink3:    #9c9a95;
+  --rule:    #e4e2dc;
+  --rule2:   #d0cec8;
+  --radius:  10px;
+  --font:    'DM Sans', sans-serif;
+  --mono:    'DM Mono', monospace;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  padding: 40px 44px 60px;
+}
+
+/* ─── Header ─── */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 1.5px solid var(--ink);
+  padding-bottom: 14px;
+  margin-bottom: 10px;
+}
+.hdr-left h1 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -.4px;
+}
+.hdr-left p {
+  margin-top: 5px;
+  font-size: 12.5px;
+  color: var(--ink2);
+}
+.hdr-right {
+  font-size: 10.5px;
+  font-family: var(--mono);
+  color: var(--ink3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  text-align: right;
+  line-height: 1.9;
+}
+.hint {
+  font-size: 11.5px;
+  color: var(--ink3);
+  margin-bottom: 22px;
+  letter-spacing: .01em;
+}
+
+/* ─── Layout ─── */
+.main {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+/* ─── Strips grid ─── */
+.strips-area {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.row-label {
+  grid-column: 1 / -1;
+  font-size: 9.5px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--ink3);
+  padding: 6px 2px 0;
+  border-top: .5px solid var(--rule2);
+  margin-top: 4px;
+}
+
+.strip-card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 16px 18px 12px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.strip-card:hover {
+  border-color: var(--rule2);
+  box-shadow: 0 2px 14px rgba(0,0,0,.055);
+}
+
+.prop-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.prop-name {
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .065em;
+  color: var(--ink2);
+}
+.prop-unit {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--ink3);
+  letter-spacing: .03em;
+}
+.prop-sym {
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--ink);
+  letter-spacing: -.3px;
+  line-height: 1;
+  margin-bottom: 14px;
+}
+.prop-sym sub {
+  font-size: 12px;
+  font-weight: 300;
+  vertical-align: sub;
+  line-height: 0;
+}
+
+.strip-svg { display: block; width: 100%; overflow: visible; }
+
+/* ─── Legend ─── */
+.legend-col {
+  width: 196px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 28px;
+  align-self: flex-start;
+}
+.legend-card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 14px 14px 10px;
+}
+.legend-title {
+  font-size: 9.5px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--ink3);
+  margin-bottom: 10px;
+  padding-bottom: 9px;
+  border-bottom: .5px solid var(--rule);
+}
+.leg-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--ink2);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background .1s, color .1s, transform .1s;
+  line-height: 1.35;
+  margin: 1px 0;
+}
+.leg-item:hover { background: var(--bg); color: var(--ink); transform: translateX(2px); }
+.leg-item.active { background: var(--bg); color: var(--ink); font-weight: 500; }
+.leg-dot {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 500; color: #fff;
+  font-family: var(--mono);
+  transition: transform .12s;
+}
+.leg-item:hover .leg-dot, .leg-item.active .leg-dot { transform: scale(1.18); }
+
+/* ─── Tooltip ─── */
+#tt {
+  position: fixed;
+  background: #1c1c1a;
+  color: #f0ede6;
+  border-radius: 10px;
+  padding: 13px 16px;
+  font-size: 12px;
+  line-height: 1.55;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .1s;
+  z-index: 9999;
+  width: 252px;
+  font-family: var(--font);
+  border: .5px solid rgba(255,255,255,.07);
+}
+#tt .tt-name {
+  font-weight: 500;
+  font-size: 13px;
+  margin-bottom: 9px;
+  padding-bottom: 8px;
+  border-bottom: .5px solid rgba(255,255,255,.1);
+}
+.tt-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 14px;
+}
+.tt-k { color: rgba(240,237,230,.5); font-size: 11px; align-self: center; }
+.tt-v { font-family: var(--mono); font-size: 11px; color: #f0ede6; text-align: right; }
+.tt-sep {
+  grid-column: 1/-1;
+  border-top: .5px solid rgba(255,255,255,.07);
+  margin: 5px 0 4px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-left">
+    <h1>Soil Properties Dashboard</h1>
+    <p>Typical values in natural state &nbsp;·&nbsp; 9 soil types &nbsp;·&nbsp; 6 geotechnical properties</p>
+  </div>
+  <div class="hdr-right">
+    Table 3.2 &amp; derived values<br>
+    Das — Principles of Geotechnical Engineering
+  </div>
+</header>
+
+<p class="hint">Hover any marker or soil name to highlight across all scales &nbsp;·&nbsp; shaded bars indicate min–max ranges</p>
+
+<div class="main">
+  <div id="strips-area" class="strips-area"></div>
+  <aside class="legend-col">
+    <div class="legend-card">
+      <div class="legend-title">Soil type</div>
+      <div id="legend"></div>
+    </div>
+  </aside>
+</div>
+
+<div id="tt"></div>
+
+<script>
+/* ─── Data ─── */
+const SOILS = [
+  { name:'Loose uniform sand',        e:[0.8],     w:[30],     gd:[14.5], Gs:[2.65], por:[0.44], gsat:[18.8] },
+  { name:'Dense uniform sand',        e:[0.45],    w:[16],     gd:[18.0], Gs:[2.65], por:[0.31], gsat:[21.0] },
+  { name:'Loose angular silty sand',  e:[0.65],    w:[25],     gd:[16.0], Gs:[2.67], por:[0.39], gsat:[19.7] },
+  { name:'Dense angular silty sand',  e:[0.4],     w:[15],     gd:[19.0], Gs:[2.67], por:[0.29], gsat:[21.5] },
+  { name:'Stiff clay',                e:[0.6],     w:[21],     gd:[17.0], Gs:[2.72], por:[0.38], gsat:[20.3] },
+  { name:'Soft clay',                 e:[0.9,1.4], w:[30,50],  gd:[11.5,14.5], Gs:[2.70], por:[0.47,0.58], gsat:[16.7,18.6] },
+  { name:'Loess',                     e:[0.9],     w:[25],     gd:[13.5], Gs:[2.68], por:[0.47], gsat:[18.5] },
+  { name:'Soft organic clay',         e:[2.5,3.2], w:[90,120], gd:[6.0,8.0], Gs:[2.55], por:[0.71,0.76], gsat:[13.4,14.2] },
+  { name:'Glacial till',              e:[0.3],     w:[10],     gd:[21.0], Gs:[2.72], por:[0.23], gsat:[22.8] },
+];
+
+const COLORS = [
+  '#888780','#1D9E75','#639922','#BA7517',
+  '#D85A30','#E24B4A','#7F77DD','#D4537E','#444442'
+];
+
+const PROPS = [
+  {
+    key:'e',   nameHtml:'Void ratio',          symHtml:'e',
+    unit:'',   min:0,    max:3.5,
+    ticks:[0,0.5,1,1.5,2,2.5,3,3.5],
+    fmt: v => v.toFixed(1),
+    ttLabel: 'Void ratio e', ttFmt: (arr) => fmtArr(arr,1,'')
+  },
+  {
+    key:'w',   nameHtml:'Moisture content',    symHtml:'w',
+    unit:'%',  min:0,    max:130,
+    ticks:[0,20,40,60,80,100,120],
+    fmt: v => String(v),
+    ttLabel: 'Moisture w', ttFmt: (arr) => fmtArr(arr,0,'%')
+  },
+  {
+    key:'gd',  nameHtml:'Dry unit weight',     symHtml:'&gamma;<sub>d</sub>',
+    unit:'kN/m³', min:4, max:23,
+    ticks:[4,8,12,16,20],
+    fmt: v => String(v),
+    ttLabel: 'Dry unit wt γd', ttFmt: (arr) => fmtArr(arr,1,'kN/m³')
+  },
+  {
+    key:'Gs',  nameHtml:'Specific gravity',    symHtml:'G<sub>s</sub>',
+    unit:'',   min:2.50, max:2.86,
+    ticks:[2.50,2.60,2.70,2.80],
+    fmt: v => v.toFixed(2),
+    ttLabel: 'Specific gravity Gs', ttFmt: (arr) => fmtArr(arr,2,'')
+  },
+  {
+    key:'por', nameHtml:'Porosity',             symHtml:'n',
+    unit:'',   min:0.18, max:0.82,
+    ticks:[0.2,0.3,0.4,0.5,0.6,0.7,0.8],
+    fmt: v => v.toFixed(1),
+    ttLabel: 'Porosity n', ttFmt: (arr) => fmtArr(arr,2,'')
+  },
+  {
+    key:'gsat',nameHtml:'Saturated unit weight',symHtml:'&gamma;<sub>sat</sub>',
+    unit:'kN/m³', min:12, max:24,
+    ticks:[12,14,16,18,20,22,24],
+    fmt: v => String(v),
+    ttLabel: 'Sat. unit wt γsat', ttFmt: (arr) => fmtArr(arr,1,'kN/m³')
+  },
+];
+
+/* ─── Helpers ─── */
+function fmtArr(arr, dec, unit) {
+  const f = v => dec > 0 ? Number(v).toFixed(dec) : String(v);
+  const s = arr.length === 2 ? `${f(arr[0])} – ${f(arr[1])}` : f(arr[0]);
+  return unit ? `${s} ${unit}` : s;
+}
+
+const svgNS = 'http://www.w3.org/2000/svg';
+function mk(tag, attrs, extra) {
+  const el = document.createElementNS(svgNS, tag);
+  if (attrs) Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k,v));
+  if (extra) Object.assign(el, extra);
+  return el;
+}
+
+/* ─── Strip constants ─── */
+const VW = 320, AL = 4, AR = 316, AW = 312;
+const DOT_R = 6, AY_BASE = 46, TICK_FONT = 8.5, LBL_FONT = 10;
+const MIN_GAP = 9, LVL_H = 15;
+
+function sx(v, p) { return AL + (v - p.min) / (p.max - p.min) * AW; }
+
+function stackLevels(items) {
+  const sorted = [...items].sort((a,b) => a.cx - b.cx);
+  const lanes = [];
+  sorted.forEach(x => {
+    let placed = false;
+    for (let l = 0; l < lanes.length; l++) {
+      if (x.cx - lanes[l][lanes[l].length-1].cx >= MIN_GAP) {
+        lanes[l].push(x); x.lv = l; placed = true; break;
+      }
+    }
+    if (!placed) { x.lv = lanes.length; lanes.push([x]); }
+  });
+}
+
+function buildSVG(p) {
+  const items = SOILS.map((s, i) => {
+    const v = s[p.key];
+    const cx = v.length === 2 ? (sx(v[0],p) + sx(v[1],p)) / 2 : sx(v[0],p);
+    return { i, c: COLORS[i], v, cx, lv: 0 };
+  });
+  stackLevels(items);
+
+  const maxLv = Math.max(...items.map(x => x.lv));
+  const topPad = 8 + (maxLv + 1) * LVL_H;
+  const AY = AY_BASE;
+  const H = topPad + AY + 22;
+
+  const svg = mk('svg', { viewBox:`0 0 ${VW} ${H}`, class:'strip-svg' });
+
+  /* axis */
+  svg.appendChild(mk('line', {
+    x1:AL, x2:AR, y1:topPad+AY, y2:topPad+AY,
+    stroke:'#d0cec8', 'stroke-width':'1.5'
+  }));
+
+  /* ticks & labels */
+  p.ticks.forEach(t => {
+    const x = sx(t, p);
+    svg.appendChild(mk('line', {
+      x1:x, x2:x, y1:topPad+AY-3, y2:topPad+AY+3,
+      stroke:'#d0cec8', 'stroke-width':'1'
+    }));
+    const lbl = mk('text', {
+      x, y:topPad+AY+15,
+      'text-anchor':'middle',
+      'font-size': TICK_FONT,
+      'fill':'#9c9a95',
+      'font-family':"'DM Mono', monospace"
+    });
+    lbl.textContent = p.fmt(t) + (p.unit ? '\u202F' + p.unit : '');
+    svg.appendChild(lbl);
+  });
+
+  /* range bars */
+  items.forEach(({ i, c, v }) => {
+    if (v.length !== 2) return;
+    const x1 = sx(v[0],p), x2 = sx(v[1],p);
+    const bar = mk('rect', {
+      x:x1, y:topPad+AY-5, width:x2-x1, height:10,
+      rx:5, fill:c, opacity:'.18'
+    });
+    bar.dataset.i = i;
+    svg.appendChild(bar);
+  });
+
+  /* dots */
+  items.forEach(({ i, c, v }) => {
+    (v.length === 2 ? [sx(v[0],p), sx(v[1],p)] : [sx(v[0],p)]).forEach(cx => {
+      const dot = mk('circle', { cx, cy:topPad+AY, r:DOT_R, fill:c });
+      dot.style.cssText = 'cursor:pointer;transition:r .1s,opacity .15s';
+      dot.dataset.i = i;
+      svg.appendChild(dot);
+    });
+  });
+
+  /* leader lines + number labels */
+  items.forEach(({ i, c, cx, lv }) => {
+    const ly = topPad - 6 - lv * LVL_H;
+    const leader = mk('line', {
+      x1:cx, x2:cx, y1:ly+5, y2:topPad+AY-DOT_R-2,
+      stroke:c, 'stroke-width':'.65', opacity:'.45', 'stroke-dasharray':'2 2'
+    });
+    leader.dataset.i = i;
+    svg.appendChild(leader);
+
+    const num = mk('text', {
+      x:cx, y:ly,
+      'text-anchor':'middle', 'dominant-baseline':'central',
+      'font-size': LBL_FONT, 'font-weight':'500',
+      fill:c, 'font-family':"'DM Mono', monospace"
+    });
+    num.style.cssText = 'cursor:pointer;transition:opacity .15s';
+    num.dataset.i = i;
+    num.textContent = i + 1;
+    svg.appendChild(num);
+  });
+
+  return svg;
+}
+
+/* ─── Render strips ─── */
+const stripsArea = document.getElementById('strips-area');
+const ROW_LABELS = ['From Table 3.2', 'Derived — standard geotechnical relationships'];
+
+PROPS.forEach((p, idx) => {
+  if (idx === 0 || idx === 3) {
+    const rl = document.createElement('div');
+    rl.className = 'row-label';
+    rl.textContent = ROW_LABELS[idx === 0 ? 0 : 1];
+    stripsArea.appendChild(rl);
+  }
+
+  const card = document.createElement('div');
+  card.className = 'strip-card';
+  card.innerHTML = `
+    <div class="prop-header">
+      <span class="prop-name">${p.nameHtml}</span>
+      ${p.unit ? `<span class="prop-unit">${p.unit}</span>` : ''}
+    </div>
+    <div class="prop-sym">${p.symHtml}</div>
+  `;
+  card.appendChild(buildSVG(p));
+  stripsArea.appendChild(card);
+});
+
+/* ─── Render legend ─── */
+const legEl = document.getElementById('legend');
+SOILS.forEach((s, i) => {
+  const item = document.createElement('div');
+  item.className = 'leg-item';
+  item.dataset.i = i;
+  item.innerHTML = `<span class="leg-dot" style="background:${COLORS[i]}">${i+1}</span><span>${s.name}</span>`;
+  item.addEventListener('mouseenter', e => { setHL(i); showTT(i, e); });
+  item.addEventListener('mousemove',  e => moveTT(e));
+  item.addEventListener('mouseleave', () => { setHL(null); hideTT(); });
+  legEl.appendChild(item);
+});
+
+/* ─── Highlight ─── */
+let curHL = null;
+function setHL(idx) {
+  if (curHL === idx) return;
+  curHL = idx;
+  document.querySelectorAll('.strip-svg [data-i]').forEach(el => {
+    const i = parseInt(el.dataset.i);
+    const on = idx === null || i === idx;
+    el.style.opacity = on ? '' : '0.08';
+    if (el.tagName === 'circle')
+      el.setAttribute('r', i === idx ? DOT_R + 2.5 : DOT_R);
+  });
+  document.querySelectorAll('.leg-item').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.i) === idx);
+  });
+}
+
+/* ─── Tooltip ─── */
+const tt = document.getElementById('tt');
+
+function buildTT(i) {
+  const s = SOILS[i];
+  const rows = PROPS.map(p =>
+    `<span class="tt-k">${p.ttLabel}</span><span class="tt-v">${p.ttFmt(s[p.key])}</span>`
+  ).join('');
+  tt.innerHTML = `
+    <div class="tt-name" style="color:${COLORS[i]}">${i+1}. ${s.name}</div>
+    <div class="tt-grid">${rows}</div>
+  `;
+}
+
+function posTT(e) {
+  const W = tt.offsetWidth || 252, H = tt.offsetHeight || 200;
+  const x = e.clientX + 18 + W > window.innerWidth  ? e.clientX - W - 10 : e.clientX + 18;
+  const y = e.clientY - 12 + H > window.innerHeight ? e.clientY - H + 8  : e.clientY - 12;
+  tt.style.left = x + 'px';
+  tt.style.top  = y + 'px';
+}
+
+function showTT(i, e) {
+  buildTT(i);
+  tt.style.opacity = '1';
+  posTT(e);
+}
+function moveTT(e) { if (tt.style.opacity === '1') posTT(e); }
+function hideTT()  { tt.style.opacity = '0'; }
+
+/* ─── SVG hover ─── */
+document.addEventListener('mousemove', e => {
+  const el = e.target.closest ? e.target.closest('.strip-svg [data-i]') : null;
+  if (el) {
+    const i = parseInt(el.dataset.i);
+    setHL(i);
+    showTT(i, e);
+  } else if (!e.target.closest('.leg-item')) {
+    setHL(null);
+    hideTT();
+  }
+});
+</script>
+</body>
+</html>
