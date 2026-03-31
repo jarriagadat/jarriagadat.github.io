@@ -467,6 +467,7 @@ PROPS.forEach((p, idx) => {
   card.appendChild(buildSVG(p));
   stripsArea.appendChild(card);
 });
+
 /* ─── Render legend ─── */
 const legEl = document.getElementById('legend');
 SOILS.forEach((s, i) => {
@@ -474,8 +475,6 @@ SOILS.forEach((s, i) => {
   item.className = 'leg-item';
   item.dataset.i = i;
   item.innerHTML = `<span class="leg-dot" style="background:${COLORS[i]}">${i+1}</span><span>${s.name}</span>`;
-  // We removed the individual hover event listeners from here!
-  // Everything is now handled globally at the bottom to keep it clean.
   legEl.appendChild(item);
 });
 
@@ -576,66 +575,6 @@ document.addEventListener('mousemove', e => {
     }
   } else {
     // Not hovering anything relevant, clear it
-    setHL(null);
-    hideTT();
-  }
-});
-
-/* ─── Highlight ─── */
-let curHL = null;
-function setHL(idx) {
-  if (curHL === idx) return;
-  curHL = idx;
-  document.querySelectorAll('.strip-svg [data-i]').forEach(el => {
-    const i = parseInt(el.dataset.i);
-    const on = idx === null || i === idx;
-    el.style.opacity = on ? '' : '0.08';
-    if (el.tagName === 'circle')
-      el.setAttribute('r', i === idx ? DOT_R + 2.5 : DOT_R);
-  });
-  document.querySelectorAll('.leg-item').forEach(el => {
-    el.classList.toggle('active', parseInt(el.dataset.i) === idx);
-  });
-}
-
-/* ─── Tooltip ─── */
-const tt = document.getElementById('tt');
-
-function buildTT(i) {
-  const s = SOILS[i];
-  const rows = PROPS.map(p =>
-    `<span class="tt-k">${p.ttLabel}</span><span class="tt-v">${p.ttFmt(s[p.key])}</span>`
-  ).join('');
-  tt.innerHTML = `
-    <div class="tt-name" style="color:${COLORS[i]}">${i+1}. ${s.name}</div>
-    <div class="tt-grid">${rows}</div>
-  `;
-}
-
-function posTT(e) {
-  const W = tt.offsetWidth || 252, H = tt.offsetHeight || 200;
-  const x = e.clientX + 18 + W > window.innerWidth  ? e.clientX - W - 10 : e.clientX + 18;
-  const y = e.clientY - 12 + H > window.innerHeight ? e.clientY - H + 8  : e.clientY - 12;
-  tt.style.left = x + 'px';
-  tt.style.top  = y + 'px';
-}
-
-function showTT(i, e) {
-  buildTT(i);
-  tt.style.opacity = '1';
-  posTT(e);
-}
-function moveTT(e) { if (tt.style.opacity === '1') posTT(e); }
-function hideTT()  { tt.style.opacity = '0'; }
-
-/* ─── SVG hover ─── */
-document.addEventListener('mousemove', e => {
-  const el = e.target.closest ? e.target.closest('.strip-svg [data-i]') : null;
-  if (el) {
-    const i = parseInt(el.dataset.i);
-    setHL(i);
-    showTT(i, e);
-  } else if (!e.target.closest('.leg-item')) {
     setHL(null);
     hideTT();
   }
