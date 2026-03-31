@@ -182,7 +182,7 @@ header {
 .leg-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between; /* Spreads name and edit button */
   font-size: 11.5px;
   color: var(--ink2);
   cursor: pointer;
@@ -191,6 +191,11 @@ header {
   transition: background .1s, color .1s;
   line-height: 1.35;
   margin: 1px 0;
+}
+.leg-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .leg-item:hover { background: var(--bg); color: var(--ink); }
 .leg-item.active { background: var(--bg); color: var(--ink); font-weight: 500; }
@@ -205,12 +210,20 @@ header {
   font-family: var(--mono);
 }
 
+.edit-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 9.5px; font-family: var(--mono); text-transform: uppercase;
+  color: var(--ink3); transition: color .15s;
+}
+.edit-btn:hover { color: var(--ink); text-decoration: underline; }
+
 /* ─── Custom Form ─── */
 .custom-form {
   display: flex;
   flex-direction: column;
   gap: 7px;
   margin-top: 4px;
+  transition: background .2s, padding .2s, margin .2s, border-radius .2s;
 }
 .custom-form input {
   font-family: var(--font);
@@ -218,12 +231,17 @@ header {
   padding: 6px 8px;
   border: 1px solid var(--rule);
   border-radius: 6px;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--ink);
   width: 100%;
 }
 .custom-form input:focus { outline: none; border-color: var(--ink3); }
-.custom-form button {
+
+.form-actions {
+  display: flex; gap: 8px; margin-top: 4px;
+}
+.form-actions button {
+  flex: 1;
   font-family: var(--font);
   font-size: 11.5px;
   font-weight: 500;
@@ -232,11 +250,15 @@ header {
   border: none;
   border-radius: 6px;
   padding: 8px;
-  margin-top: 4px;
   cursor: pointer;
   transition: opacity .15s;
 }
-.custom-form button:hover { opacity: 0.85; }
+.form-actions button:hover { opacity: 0.85; }
+.cancel-btn {
+  background: var(--rule2) !important;
+  color: var(--ink) !important;
+  display: none; /* Hidden by default */
+}
 
 /* ─── Tooltip ─── */
 #tt {
@@ -299,8 +321,8 @@ header {
     </div>
     
     <div class="legend-card">
-      <div class="legend-title">Add Custom Soil</div>
-      <div class="custom-form">
+      <div class="legend-title">Custom Soil Data</div>
+      <div class="custom-form" id="custom-form-container">
         <input type="text" id="cs-name" placeholder="Name (e.g., My Clay)">
         <input type="number" id="cs-e" placeholder="Void ratio (e)" step="0.01">
         <input type="number" id="cs-w" placeholder="Moisture w (%)" step="1">
@@ -308,7 +330,10 @@ header {
         <input type="number" id="cs-Gs" placeholder="Spec. gravity (Gs)" step="0.01">
         <input type="number" id="cs-por" placeholder="Porosity (n)" step="0.01">
         <input type="number" id="cs-gsat" placeholder="Sat. unit wt (γsat)" step="0.1">
-        <button id="add-soil-btn">Add to Chart</button>
+        <div class="form-actions">
+          <button id="add-soil-btn">Add Soil</button>
+          <button id="cancel-edit-btn" class="cancel-btn">Cancel</button>
+        </div>
       </div>
     </div>
   </aside>
@@ -385,6 +410,7 @@ const PROPS = [
 /* ─── State & Selections ─── */
 let curHL = null; 
 let selectedSoils = new Set(); 
+let editingIdx = null; // Tracks which soil we are currently editing
 
 /* ─── Helpers ─── */
 function fmtArr(arr, dec, unit) {
@@ -520,16 +546,23 @@ function renderDashboard() {
     stripsArea.appendChild(card);
   });
 
-  // Render Legend (Now with Checkboxes)
+  // Render Legend
   SOILS.forEach((s, i) => {
     const item = document.createElement('div');
     item.className = 'leg-item';
     item.dataset.i = i;
     const isChecked = selectedSoils.has(i) ? 'checked' : '';
+    
+    // Only show the Edit button for custom soils (index >= 9)
+    const editBtnHTML = i >= 9 ? `<button class="edit-btn" data-edit="${i}">Edit</button>` : '';
+
     item.innerHTML = `
-      <input type="checkbox" ${isChecked}>
-      <span class="leg-dot" style="background:${COLORS[i]}">${i+1}</span>
-      <span>${s.name}</span>
+      <div class="leg-item-left">
+        <input type="checkbox" ${isChecked}>
+        <span class="leg-dot" style="background:${COLORS[i]}">${i+1}</span>
+        <span>${s.name}</span>
+      </div>
+      ${editBtnHTML}
     `;
     legEl.appendChild(item);
   });
@@ -590,13 +623,61 @@ function showTT(i, e) { buildTT(i); tt.style.opacity = '1'; posTT(e); }
 function moveTT(e) { if (tt.style.opacity === '1') posTT(e); }
 function hideTT()  { tt.style.opacity = '0'; }
 
+/* ─── Editing Logic ─── */
+function startEditing(i) {
+  editingIdx = i;
+  const s = SOILS[i];
+  
+  // Populate form
+  document.getElementById('cs-name').value = s.name;
+  document.getElementById('cs-e').value = s.e.length ? s.e[0] : '';
+  document.getElementById('cs-w').value = s.w.length ? s.w[0] : '';
+  document.getElementById('cs-gd').value = s.gd.length ? s.gd[0] : '';
+  document.getElementById('cs-Gs').value = s.Gs.length ? s.Gs[0] : '';
+  document.getElementById('cs-por').value = s.por.length ? s.por[0] : '';
+  document.getElementById('cs-gsat').value = s.gsat.length ? s.gsat[0] : '';
+  
+  // Switch UI to "Edit Mode"
+  document.getElementById('add-soil-btn').textContent = 'Save Edits';
+  document.getElementById('cancel-edit-btn').style.display = 'block';
+  
+  const formContainer = document.getElementById('custom-form-container');
+  formContainer.style.background = '#e4e2dc';
+  formContainer.style.padding = '10px';
+  formContainer.style.borderRadius = '8px';
+  formContainer.style.margin = '-10px -10px 0 -10px';
+}
+
+function cancelEditing() {
+  editingIdx = null;
+  document.querySelectorAll('.custom-form input').forEach(input => input.value = '');
+  
+  // Switch UI back to "Add Mode"
+  document.getElementById('add-soil-btn').textContent = 'Add Soil';
+  document.getElementById('cancel-edit-btn').style.display = 'none';
+  
+  const formContainer = document.getElementById('custom-form-container');
+  formContainer.style.background = 'transparent';
+  formContainer.style.padding = '0';
+  formContainer.style.margin = '4px 0 0 0';
+}
+
+document.getElementById('cancel-edit-btn').addEventListener('click', cancelEditing);
+
 /* ─── Interactions ─── */
 
-// Handle Clicks (Checkboxes / Multi-Select)
 document.addEventListener('click', e => {
+  // 1. Check if an Edit button was clicked
+  const editBtn = e.target.closest('.edit-btn');
+  if (editBtn) {
+    e.stopPropagation();
+    startEditing(parseInt(editBtn.dataset.edit));
+    return;
+  }
+
+  // 2. Check if a Legend item (or chart dot) was clicked
   const targetEl = e.target.closest('.strip-svg [data-i], .leg-item');
-  
-  if (targetEl) {
+  if (targetEl && !e.target.closest('.custom-form')) {
     const i = parseInt(targetEl.dataset.i);
     if (selectedSoils.has(i)) selectedSoils.delete(i);
     else selectedSoils.add(i);
@@ -623,12 +704,11 @@ document.addEventListener('mousemove', e => {
   }
 });
 
-/* ─── Add Custom Soil Logic ─── */
+/* ─── Save/Add Custom Soil Logic ─── */
 document.getElementById('add-soil-btn').addEventListener('click', () => {
   const nameInput = document.getElementById('cs-name').value.trim();
-  const name = nameInput || `Custom Soil ${SOILS.length - 8}`; // default name if empty
+  const name = nameInput || `Custom Soil ${SOILS.length - 8}`; 
   
-  // Helper to grab number and format as array, or return empty array if blank
   const getVal = (id) => {
     const val = parseFloat(document.getElementById(id).value);
     return isNaN(val) ? [] : [val];
@@ -644,21 +724,20 @@ document.getElementById('add-soil-btn').addEventListener('click', () => {
     gsat: getVal('cs-gsat')
   };
 
-  // Push to data array
-  SOILS.push(customSoil);
-  
-  // Assign a color from our custom palette
-  const nextColor = CUSTOM_COLORS[(SOILS.length - 10) % CUSTOM_COLORS.length];
-  COLORS.push(nextColor);
+  if (editingIdx !== null) {
+    // We are updating an existing custom soil
+    SOILS[editingIdx] = customSoil;
+    cancelEditing(); // This clears the form and resets the UI
+  } else {
+    // We are adding a brand new soil
+    SOILS.push(customSoil);
+    const nextColor = CUSTOM_COLORS[(SOILS.length - 10) % CUSTOM_COLORS.length];
+    COLORS.push(nextColor);
+    selectedSoils.add(SOILS.length - 1);
+    document.querySelectorAll('.custom-form input').forEach(input => input.value = ''); // Clear inputs
+  }
 
-  // Automatically select the new soil so the user sees it immediately
-  selectedSoils.add(SOILS.length - 1);
-
-  // Re-render everything
   renderDashboard();
-
-  // Clear the inputs
-  document.querySelectorAll('.custom-form input').forEach(input => input.value = '');
 });
 
 // Initial Render
