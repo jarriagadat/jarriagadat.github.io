@@ -467,7 +467,6 @@ PROPS.forEach((p, idx) => {
   card.appendChild(buildSVG(p));
   stripsArea.appendChild(card);
 });
-
 /* ─── Render legend ─── */
 const legEl = document.getElementById('legend');
 SOILS.forEach((s, i) => {
@@ -475,10 +474,111 @@ SOILS.forEach((s, i) => {
   item.className = 'leg-item';
   item.dataset.i = i;
   item.innerHTML = `<span class="leg-dot" style="background:${COLORS[i]}">${i+1}</span><span>${s.name}</span>`;
-  item.addEventListener('mouseenter', e => { setHL(i); showTT(i, e); });
-  item.addEventListener('mousemove',  e => moveTT(e));
-  item.addEventListener('mouseleave', () => { setHL(null); hideTT(); });
+  // We removed the individual hover event listeners from here!
+  // Everything is now handled globally at the bottom to keep it clean.
   legEl.appendChild(item);
+});
+
+/* ─── State & Highlight ─── */
+let curHL = null;
+let pinnedIdx = null; // NEW: tracks the clicked/pinned state
+
+function setHL(idx) {
+  if (curHL === idx) return;
+  curHL = idx;
+  document.querySelectorAll('.strip-svg [data-i]').forEach(el => {
+    const i = parseInt(el.dataset.i);
+    const on = idx === null || i === idx;
+    el.style.opacity = on ? '' : '0.08';
+    if (el.tagName === 'circle')
+      el.setAttribute('r', i === idx ? DOT_R + 2.5 : DOT_R);
+  });
+  document.querySelectorAll('.leg-item').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.i) === idx);
+  });
+}
+
+/* ─── Tooltip ─── */
+const tt = document.getElementById('tt');
+
+function buildTT(i) {
+  const s = SOILS[i];
+  const rows = PROPS.map(p =>
+    `<span class="tt-k">${p.ttLabel}</span><span class="tt-v">${p.ttFmt(s[p.key])}</span>`
+  ).join('');
+  tt.innerHTML = `
+    <div class="tt-name" style="color:${COLORS[i]}">${i+1}. ${s.name}</div>
+    <div class="tt-grid">${rows}</div>
+  `;
+}
+
+function posTT(e) {
+  const W = tt.offsetWidth || 252, H = tt.offsetHeight || 200;
+  const x = e.clientX + 18 + W > window.innerWidth  ? e.clientX - W - 10 : e.clientX + 18;
+  const y = e.clientY - 12 + H > window.innerHeight ? e.clientY - H + 8  : e.clientY - 12;
+  tt.style.left = x + 'px';
+  tt.style.top  = y + 'px';
+}
+
+function showTT(i, e) {
+  buildTT(i);
+  tt.style.opacity = '1';
+  posTT(e);
+}
+function moveTT(e) { if (tt.style.opacity === '1') posTT(e); }
+function hideTT()  { tt.style.opacity = '0'; }
+
+/* ─── Unified Event Listeners (Hover & Click) ─── */
+
+// 1. Handle Clicks (Pinning)
+document.addEventListener('click', e => {
+  const targetEl = e.target.closest('.strip-svg [data-i], .leg-item');
+  
+  if (targetEl) {
+    const i = parseInt(targetEl.dataset.i);
+    if (pinnedIdx === i) {
+      // If already pinned, click again to unpin
+      pinnedIdx = null; 
+    } else {
+      // Pin the new item and freeze the tooltip where they clicked
+      pinnedIdx = i;    
+      setHL(i);
+      showTT(i, e);
+    }
+  } else {
+    // Clicked outside the charts/legend: unpin everything
+    if (pinnedIdx !== null) {
+      pinnedIdx = null;
+      setHL(null);
+      hideTT();
+    }
+  }
+});
+
+// 2. Handle Hovers
+document.addEventListener('mousemove', e => {
+  // If an item is pinned, ignore all mouse movements (keeps tooltip frozen)
+  if (pinnedIdx !== null) return; 
+
+  // Check if we are hovering over a chart dot OR a legend item
+  const el = e.target.closest ? e.target.closest('.strip-svg [data-i], .leg-item') : null;
+  
+  if (el) {
+    const i = parseInt(el.dataset.i);
+    
+    // Only rebuild the tooltip if we just entered a new item
+    if (curHL !== i) {
+       setHL(i);
+       showTT(i, e);
+    } else {
+       // Otherwise, just move it with the mouse
+       moveTT(e);
+    }
+  } else {
+    // Not hovering anything relevant, clear it
+    setHL(null);
+    hideTT();
+  }
 });
 
 /* ─── Highlight ─── */
