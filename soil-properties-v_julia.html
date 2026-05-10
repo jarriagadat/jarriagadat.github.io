@@ -1,0 +1,330 @@
+### A Pluto.jl notebook ###
+# v0.19.46
+
+using Markdown
+using InteractiveUtils
+
+# ╔═╡ 11111111-1111-1111-1111-111111111111
+begin
+	using PlutoUI
+	using PlotlyJS
+	using HypertextLiteral
+end
+
+# ╔═╡ 22222222-2222-2222-2222-222222222222
+@htl("""
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body, pluto-notebook { background: #f5f3ee !important; }
+  pluto-cell { background: #f5f3ee !important; }
+</style>
+<div style="
+  font-family: 'DM Sans', sans-serif;
+  border-bottom: 2px solid #1c1c1a;
+  padding-bottom: 14px;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+">
+  <div>
+    <h1 style="font-size:22px; font-weight:500; letter-spacing:-0.4px; margin:0; color:#1c1c1a;">
+      Soil Properties Dashboard
+    </h1>
+    <p style="margin-top:5px; font-size:12.5px; color:#5c5b56;">
+      Typical values in natural state &nbsp;·&nbsp; Geotechnical properties &nbsp;·&nbsp;
+      <strong style="color:#7F77DD;">Julia / Pluto edition</strong>
+    </p>
+  </div>
+  <div style="
+    font-size:10px; font-family:'DM Mono',monospace; color:#9c9a95;
+    text-align:right; line-height:1.9; text-transform:uppercase; letter-spacing:0.06em;
+  ">
+    Table 3.2 &amp; derived values<br>
+    Das — Principles of Geotechnical Engineering
+  </div>
+</div>
+<p style="font-size:11.5px; color:#9c9a95; margin:6px 0 0; letter-spacing:.01em; font-family:'DM Sans',sans-serif;">
+  Hover dots to inspect values &nbsp;·&nbsp; <b style="color:#5c5b56">Check boxes below to highlight soils</b> &nbsp;·&nbsp; Wide bars are min–max ranges
+</p>
+""")
+
+# ╔═╡ 33333333-3333-3333-3333-333333333333
+begin
+	# ─── Soil data ─────────────────────────────────────────────────────────────
+	# Each soil is a NamedTuple. Single-element vectors = point estimate.
+	# Two-element vectors = [min, max] range (e.g. Soft clay e = [0.9, 1.4]).
+
+	const SOILS = [
+		(name = "Loose uniform sand",        e=[0.80],     w=[30.0],        gd=[14.5],      Gs=[2.65], n=[0.44],       gsat=[18.8]),
+		(name = "Dense uniform sand",        e=[0.45],     w=[16.0],        gd=[18.0],      Gs=[2.65], n=[0.31],       gsat=[21.0]),
+		(name = "Loose angular silty sand",  e=[0.65],     w=[25.0],        gd=[16.0],      Gs=[2.67], n=[0.39],       gsat=[19.7]),
+		(name = "Dense angular silty sand",  e=[0.40],     w=[15.0],        gd=[19.0],      Gs=[2.67], n=[0.29],       gsat=[21.5]),
+		(name = "Stiff clay",                e=[0.60],     w=[21.0],        gd=[17.0],      Gs=[2.72], n=[0.38],       gsat=[20.3]),
+		(name = "Soft clay",                 e=[0.9,1.4],  w=[30.0,50.0],   gd=[11.5,14.5], Gs=[2.70], n=[0.47,0.58],  gsat=[16.7,18.6]),
+		(name = "Loess",                     e=[0.90],     w=[25.0],        gd=[13.5],      Gs=[2.68], n=[0.47],       gsat=[18.5]),
+		(name = "Soft organic clay",         e=[2.5,3.2],  w=[90.0,120.0],  gd=[6.0,8.0],   Gs=[2.55], n=[0.71,0.76],  gsat=[13.4,14.2]),
+		(name = "Glacial till",              e=[0.30],     w=[10.0],        gd=[21.0],      Gs=[2.72], n=[0.23],       gsat=[22.8]),
+	]
+
+	const COLORS = [
+		"#888780", "#1D9E75", "#639922", "#BA7517",
+		"#D85A30", "#E24B4A", "#7F77DD", "#D4537E", "#444442",
+	]
+
+	# ─── Property metadata ─────────────────────────────────────────────────────
+	const PROPS = [
+		(key=:e,    label="Void ratio",              sym="e",    unit="",
+		 xmin=0.0,  xmax=3.5,
+		 ticks=[0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5],     row=1, col=1),
+
+		(key=:w,    label="Moisture content",         sym="w",    unit="%",
+		 xmin=0.0,  xmax=130.0,
+		 ticks=[0.0, 20.0, 40.0, 60.0, 80.0, 100.0, 120.0],   row=1, col=2),
+
+		(key=:gd,   label="Dry unit weight",          sym="γd",   unit="kN/m³",
+		 xmin=4.0,  xmax=23.0,
+		 ticks=[4.0, 8.0, 12.0, 16.0, 20.0],                  row=1, col=3),
+
+		(key=:Gs,   label="Specific gravity",         sym="Gs",   unit="",
+		 xmin=2.50, xmax=2.86,
+		 ticks=[2.50, 2.60, 2.70, 2.80],                       row=2, col=1),
+
+		(key=:n,    label="Porosity",                 sym="n",    unit="",
+		 xmin=0.18, xmax=0.82,
+		 ticks=[0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],           row=2, col=2),
+
+		(key=:gsat, label="Saturated unit weight",    sym="γsat", unit="kN/m³",
+		 xmin=12.0, xmax=24.0,
+		 ticks=[12.0, 14.0, 16.0, 18.0, 20.0, 22.0, 24.0],    row=2, col=3),
+	]
+
+	md"✅ **Data loaded** — $(length(SOILS)) soils · $(length(PROPS)) properties"
+end
+
+# ╔═╡ 44444444-4444-4444-4444-444444444444
+md"""
+---
+### Select soils to highlight
+Leave all unchecked to display every soil at full opacity.
+"""
+
+# ╔═╡ 55555555-5555-5555-5555-555555555555
+@bind selected_labels MultiCheckBox(
+	["$(i). $(s.name)" for (i, s) in enumerate(SOILS)],
+	default = String[],
+)
+
+# ╔═╡ 66666666-6666-6666-6666-666666666666
+let
+	# ── Resolve selection ────────────────────────────────────────────────────
+	selected_idx = Set(
+		i for (i, s) in enumerate(SOILS)
+		if "$(i). $(s.name)" ∈ selected_labels
+	)
+	has_selection = !isempty(selected_idx)
+
+	# ── Helper: format a property value array ────────────────────────────────
+	fmt_val(vals, unit) =
+		length(vals) == 2 ?
+		"$(vals[1]) – $(vals[2])$(isempty(unit) ? "" : " $(unit)")" :
+		"$(vals[1])$(isempty(unit) ? "" : " $(unit)")"
+
+	# ── Subplot grid ─────────────────────────────────────────────────────────
+	subplot_titles = [
+		isempty(p.unit) ?
+		"<b>$(p.label)</b>  [$(p.sym)]" :
+		"<b>$(p.label)</b>  [$(p.sym), $(p.unit)]"
+		for p in PROPS
+	]
+
+	fig = make_subplots(
+		rows = 2, cols = 3,
+		subplot_titles   = subplot_titles,
+		horizontal_spacing = 0.09,
+		vertical_spacing   = 0.24,
+	)
+
+	# ── Build traces ─────────────────────────────────────────────────────────
+	for (pi, prop) in enumerate(PROPS)
+		for (si, soil) in enumerate(SOILS)
+			vals  = getfield(soil, prop.key)
+			color = COLORS[si]
+			active = !has_selection || si ∈ selected_idx
+			α = active ? 0.88 : 0.07
+
+			# Rich tooltip — assembled once, reused for every trace of this soil/prop
+			tip = join(vcat(
+				"<b style='color:$(color)'>$(si). $(soil.name)</b>",
+				["&nbsp; $(p.sym) = <b>$(fmt_val(getfield(soil, p.key), p.unit))</b>"
+				 for p in PROPS],
+			), "<br>") * "<extra></extra>"
+
+			if length(vals) == 2
+				# ── Range soil: midpoint marker + wide error bar + endpoint dots ──
+				x_mid = (vals[1] + vals[2]) / 2.0
+				x_err = (vals[2] - vals[1]) / 2.0
+
+				# Central marker with error bar = the range band
+				add_trace!(fig,
+					scatter(
+						x    = [x_mid], y = [0.0],
+						mode = "markers",
+						marker  = attr(
+							color=color, size=13, opacity=α,
+							line=attr(width=0),
+						),
+						error_x = attr(
+							type="data", symmetric=true, value=x_err,
+							visible=true, color=color,
+							thickness=16, width=0,
+						),
+						name        = soil.name,
+						legendgroup = "g$(si)",
+						showlegend  = (pi == 1),
+						hovertemplate = tip,
+					);
+					row=prop.row, col=prop.col,
+				)
+
+				# Endpoint dots to mark the exact bounds
+				for xv in vals
+					add_trace!(fig,
+						scatter(
+							x=[xv], y=[0.0], mode="markers",
+							marker = attr(
+								color=color, size=9, opacity=α,
+								line=attr(color="#f5f3ee", width=1.5),
+							),
+							name=soil.name, legendgroup="g$(si)", showlegend=false,
+							hovertemplate=tip,
+						);
+						row=prop.row, col=prop.col,
+					)
+				end
+
+			else
+				# ── Point estimate ────────────────────────────────────────────
+				add_trace!(fig,
+					scatter(
+						x    = [vals[1]], y = [0.0],
+						mode = "markers",
+						marker = attr(
+							color=color, size=13, opacity=α,
+							line=attr(color="#f5f3ee", width=1.5),
+						),
+						name        = soil.name,
+						legendgroup = "g$(si)",
+						showlegend  = (pi == 1),
+						hovertemplate = tip,
+					);
+					row=prop.row, col=prop.col,
+				)
+			end
+		end
+	end
+
+	# ── Axis styling (applied after all traces are added) ────────────────────
+	# Subplot axis numbering in Plotly: first subplot = "xaxis"/"yaxis",
+	# subsequent ones = "xaxis2", "xaxis3", ... etc.
+	sfx(i) = i == 1 ? "" : string(i)
+
+	axis_kw = Dict{Symbol, Any}()
+	for (pi, prop) in enumerate(PROPS)
+		s = sfx(pi)
+		axis_kw[Symbol("xaxis$(s)")] = attr(
+			range     = [prop.xmin, prop.xmax],
+			tickvals  = prop.ticks,
+			tickfont  = attr(size=8.5, family="DM Mono, monospace", color="#9c9a95"),
+			gridcolor = "#e4e2dc", gridwidth=1,
+			zeroline  = false,
+			showline  = true, linecolor="#d0cec8", linewidth=1.5,
+			mirror    = false,
+		)
+		axis_kw[Symbol("yaxis$(s)")] = attr(
+			showticklabels = false,
+			showgrid       = false,
+			zeroline       = false,
+			range          = [-2.0, 2.0],   # extra headroom for the strip
+		)
+	end
+
+	relayout!(fig;
+		axis_kw...,
+		paper_bgcolor = "#f5f3ee",
+		plot_bgcolor  = "#f5f3ee",
+		height        = 560,
+		font          = attr(family="DM Sans, sans-serif", color="#1c1c1a", size=11),
+		legend        = attr(
+			x=1.01, y=1.0, xanchor="left", yanchor="top",
+			bgcolor="#ffffff", bordercolor="#e4e2dc", borderwidth=1,
+			font=attr(size=10.5, family="DM Sans, sans-serif"),
+			tracegroupgap = 3,
+		),
+		margin     = attr(l=10, r=220, t=65, b=20),
+		hoverlabel = attr(
+			bgcolor    = "#1c1c1a",
+			font       = attr(color="#f0ede6", size=11.5, family="DM Sans, sans-serif"),
+			bordercolor = "#444",
+			align      = "left",
+		),
+	)
+
+	fig
+end
+
+# ╔═╡ 77777777-7777-7777-7777-777777777777
+md"""
+---
+#### 📐 Quick reference — geotechnical relationships
+
+The **derived** properties (Gs, n, γsat) are computed from:
+
+```
+n  =  e / (1 + e)            # Porosity from void ratio
+γd = Gs·γw / (1 + e)         # Dry unit weight
+γsat = (Gs + e)·γw / (1 + e) # Saturated unit weight   [γw = 9.81 kN/m³]
+```
+
+Source: Das, B.M. *Principles of Geotechnical Engineering*, Table 3.2.
+"""
+
+# ╔═╡ 88888888-8888-8888-8888-888888888888
+@htl("""
+<div style="
+  margin-top:30px; padding-top:20px;
+  border-top:1.5px solid #e4e2dc;
+  font-size:11px; color:#9c9a95; text-align:center;
+  line-height:1.8; font-family:'DM Sans',sans-serif;
+">
+  <p>
+    <strong style="color:#5c5b56">Developed by:</strong>
+    Arriagada, J.A. M.Eng., C.Eng.
+    &nbsp;|&nbsp;
+    <strong style="color:#5c5b56">Version:</strong> 1.0.0 (Julia / Pluto)
+    &nbsp;|&nbsp;
+    <strong style="color:#5c5b56">Last updated:</strong> 2026-03
+  </p>
+  <p>
+    <strong style="color:#5c5b56">Disclaimer:</strong>
+    Provided for educational purposes only. Comments and feedback are welcomed.
+  </p>
+  <p>
+    <strong style="color:#5c5b56">License:</strong>
+    Free to use, modify, and redistribute with proper credit to the original author.
+  </p>
+  <p style="margin-top:8px; font-size:10px;">
+    Julia ecosystem · Pluto.jl · PlotlyJS.jl · HypertextLiteral.jl · PlutoUI.jl
+  </p>
+</div>
+""")
+
+# ╔═╡ Cell order:
+# ╠═ 11111111-1111-1111-1111-111111111111
+# ╟─ 22222222-2222-2222-2222-222222222222
+# ╠═ 33333333-3333-3333-3333-333333333333
+# ╟─ 44444444-4444-4444-4444-444444444444
+# ╠═ 55555555-5555-5555-5555-555555555555
+# ╠═ 66666666-6666-6666-6666-666666666666
+# ╟─ 77777777-7777-7777-7777-777777777777
+# ╟─ 88888888-8888-8888-8888-888888888888
